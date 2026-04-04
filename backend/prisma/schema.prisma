@@ -113,7 +113,7 @@ model Bus {
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   trips  Trip[]
   @@index([schoolId])
-}
+} 
 
 model Route {
   id        String    @id @default(cuid())
@@ -165,7 +165,7 @@ model Trip {
   @@index([busId])
   @@index([driverId])
   @@index([scheduledAt])
-}
+} 
 
 model LocationPing {
   id               String   @id @default(cuid())
