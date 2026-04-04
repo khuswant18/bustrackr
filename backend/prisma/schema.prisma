@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,10 +7,85 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  DRIVER
+  PARENT
+  SCHOOL
+}
+
+enum TripStatus {
+  ACTIVE
+  COMPLETED
+}
+
 model User {
-  id        Int     @id @default(autoincrement())
+  id          String    @id @default(uuid())
+  name        String
+  email       String    @unique
+  password    String
+  role        Role
+  phone       String
+  schoolId    String?
+  school      School?   @relation(fields: [schoolId], references: [id])
+  busesDriven Bus[]     @relation("DriverBuses")
+  students    Student[] @relation("ParentStudents")
+  trips       Trip[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model School {
+  id        String    @id @default(uuid())
   name      String
-  email     String  @unique
+  address   String
+  users     User[]
+  buses     Bus[]
+  students  Student[]
+  createdAt DateTime  @default(now())
+}
+
+model Bus {
+  id        String        @id @default(uuid())
+  busNumber String
+  schoolId  String
+  school    School        @relation(fields: [schoolId], references: [id])
+  driverId  String
+  driver    User          @relation("DriverBuses", fields: [driverId], references: [id])
+  students  Student[]
+  trips     Trip[]
+  locations LocationLog[]
+  createdAt DateTime      @default(now())
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  name      String
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id])
+  busId     String
+  bus       Bus      @relation(fields: [busId], references: [id])
+  parentId  String
+  parent    User     @relation("ParentStudents", fields: [parentId], references: [id])
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+model Trip {
+  id        String     @id @default(uuid())
+  busId     String
+  bus       Bus        @relation(fields: [busId], references: [id])
+  driverId  String
+  driver    User       @relation(fields: [driverId], references: [id])
+  status    TripStatus @default(ACTIVE)
+  startTime DateTime   @default(now())
+  endTime   DateTime?
+  createdAt DateTime   @default(now())
+}
+
+model LocationLog {
+  id        String   @id @default(uuid())
+  busId     String
+  bus       Bus      @relation(fields: [busId], references: [id])
+  lat       Float
+  lng       Float
+  createdAt DateTime @default(now())
 }
