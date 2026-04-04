@@ -40,6 +40,15 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "react-native-background-geolocation",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Always allow BusTrackr to access your location to track the bus route in the background.",
+          "locationAlwaysPermission": "Always allow BusTrackr to access your location.",
+          "locationWhenInUsePermission": "Allow BusTrackr to access your location while using the app.",
+          "motionPermission": "Allow BusTrackr to access your device motion to optimize battery life."
+        }
       ]
     ],
     "experiments": {
