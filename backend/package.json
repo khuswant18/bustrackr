@@ -4,15 +4,24 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.js"
+    "dev": "ts-node-dev --respawn src/server.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
+  "type": "commonjs",
   "dependencies": {
-    "dotenv": "^17.3.1",
+    "@prisma/client": "^6.19.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.0",
     "express": "^5.2.1",
-    "nodemon": "^3.1.14"
+    "prisma": "^6.19.3",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^6.0.2"
   }
 }
