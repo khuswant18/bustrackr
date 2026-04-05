@@ -13,10 +13,8 @@ if (Platform.OS !== 'web') {
 
 export default function TrackingDashboard() {
   const [isTracking, setIsTracking] = useState(false);
-  console.log("isTracking", isTracking);
   const [moduleReady, setModuleReady] = useState(!!BackgroundGeolocation);
-  console.log("moduleReady", moduleReady);
-  const busId = "bus-123"; // In a real app, they select this from a dropdown
+  const busId = "bus-123"; 
 
   useEffect(() => {
     if (!BackgroundGeolocation) {
@@ -24,33 +22,29 @@ export default function TrackingDashboard() {
       return;
     }
 
-    // 1. Configure the Background Tracker
     BackgroundGeolocation.ready({
       desiredAccuracy: BackgroundGeolocation.DESIRED_ACCURACY_HIGH,
-      distanceFilter: 20, // Only emit if moved 20 meters
-      stopTimeout: 5,     // Keep tracking for 5 mins after bus stops
-      debug: true,        // Sounds a beep when a location is recorded
+      distanceFilter: 20, // 20 meter
+      stopTimeout: 5,     
+      debug: true,        
       logLevel: BackgroundGeolocation.LOG_LEVEL_VERBOSE,
       startOnBoot: false,
     }).then((state) => {
       setIsTracking(state.enabled);
     });
 
-    // 2. The Magic Listener: This fires every time the phone moves
     const locationSubscription = BackgroundGeolocation.onLocation((location) => {
       console.log('[GPS] Location recorded:', location.coords.latitude);
       
-      // Emit strictly according to the Server 3 payload we designed
       socket.emit('send-location', {
         busId: busId,
         lat: location.coords.latitude,
         lng: location.coords.longitude,
-        capturedAt: location.timestamp, // Crucial for the offline dead-zone fix
+        capturedAt: location.timestamp, 
       });
     });
 
     return () => {
-      // Cleanup when screen unmounts
       locationSubscription.remove();
       socket.disconnect();
     };
@@ -61,11 +55,11 @@ export default function TrackingDashboard() {
       return;
     }
 
-    if (isTracking) {
+    if (isTracking) { 
       BackgroundGeolocation.stop();
       socket.disconnect();
       setIsTracking(false);
-    } else {
+    } else { 
       socket.connect();
       BackgroundGeolocation.start();
       BackgroundGeolocation.getCurrentPosition({

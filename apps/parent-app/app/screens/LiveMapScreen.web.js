@@ -51,7 +51,7 @@ export default function LiveMapScreen() {
     loadMapLibraries();
 
     return () => {
-      mounted = false;
+      mounted = false; 
     };
   }, []);
 
@@ -102,7 +102,7 @@ export default function LiveMapScreen() {
       <p style={styles.status}>{isConnected ? 'Live Connection' : 'Reconnecting...'}</p>
 
       <div style={styles.mapWrap}>
-        <MapContainer
+        <MapContainer 
           key={`${currentCenter[0]}-${currentCenter[1]}`}
           center={currentCenter}
           zoom={14}
@@ -142,7 +142,7 @@ export default function LiveMapScreen() {
       </div>
     </div>
   );
-}
+} 
 
 const styles = {
   container: {
