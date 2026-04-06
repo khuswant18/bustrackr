@@ -24,11 +24,11 @@ export default function TrackingDashboard() {
   const targetLat = 28.962138;
   const targetLng = 77.092041;
   const simulationIntervalMs = 3000;
-  const busSpeedKmh = 50; 
+  const busSpeedKmh = 50;
   const metersPerTick =
     (busSpeedKmh * 1000 * simulationIntervalMs) / (60 * 60 * 1000); //distance = speed × time
 
-  const stopSimulation = useCallback(() => { 
+  const stopSimulation = useCallback(() => {
     if (simulationTimerRef.current) {
       clearInterval(simulationTimerRef.current);
       simulationTimerRef.current = null;

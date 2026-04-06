@@ -1,3 +1,4 @@
+version: "3.9"
 services:
   redis:
     image: redis:7-alpine
@@ -14,5 +15,30 @@ services:
       timeout: 5s
       retries: 5
 
+
+
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: postgis-db
+    restart: always
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tracking_db
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
+  postgis_data:
   redis-data:
