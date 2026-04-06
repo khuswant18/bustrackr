@@ -68,6 +68,7 @@ io.on("connection", (socket: Socket) => {
       });
 
       try {
+        // these tripid things are just for saving in db
         let tripId = data.tripId;
 
         // if driver does not send tripid , find an active trip for this bus and attach it

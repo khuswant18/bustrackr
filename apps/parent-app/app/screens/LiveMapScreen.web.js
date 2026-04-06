@@ -1,20 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { socket } from '../../services/socketClient.js';
+import busIconImage from '../../images/bus.png';
 
 export default function LiveMapScreen() {
-  const [busLocation, setBusLocation] = useState(null);
+  const [targetLocation, setTargetLocation] = useState(null);
+  const [displayLocation, setDisplayLocation] = useState(null);
+  const [routePath, setRoutePath] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [mapLib, setMapLib] = useState(null);
+  const [busIcon, setBusIcon] = useState(null);
+  const animationFrameRef = useRef(null);
+  const displayLocationRef = useRef(null);
   const childBusId = 'bus-123';
 
   const defaultCenter = useMemo(() => [28.6139, 77.209], []);
-  const currentCenter = useMemo(() => {
-    if (!busLocation) {
-      return defaultCenter;
-    }
-
-    return [busLocation.lat, busLocation.lng];
-  }, [busLocation, defaultCenter]);
 
   useEffect(() => {
     let mounted = true;
@@ -35,6 +34,9 @@ export default function LiveMapScreen() {
 
       const leaflet = await import('leaflet');
       const reactLeaflet = await import('react-leaflet');
+      const resolvedBusIconUrl = typeof busIconImage === 'string'
+        ? busIconImage
+        : (busIconImage?.src || busIconImage?.uri);
 
       delete leaflet.Icon.Default.prototype._getIconUrl;
       leaflet.Icon.Default.mergeOptions({
@@ -43,8 +45,16 @@ export default function LiveMapScreen() {
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
+      const customBusIcon = leaflet.icon({
+        iconUrl: resolvedBusIconUrl,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+        popupAnchor: [0, -18],
+      });
+
       if (mounted) {
         setMapLib({ ...reactLeaflet });
+        setBusIcon(customBusIcon);
       }
     };
 
@@ -52,7 +62,7 @@ export default function LiveMapScreen() {
 
     return () => {
       mounted = false; 
-    };
+    }; 
   }, []);
 
   useEffect(() => {
@@ -64,7 +74,18 @@ export default function LiveMapScreen() {
     const onDisconnect = () => setIsConnected(false);
 
     const onLiveLocationUpdate = (data) => {
-      setBusLocation(data);
+      const nextLocation = {
+        lat: data.lat,
+        lng: data.lng,
+        timestamp: data.timestamp,
+      };
+
+      setRoutePath((prev) => {
+        const updated = [...prev, [nextLocation.lat, nextLocation.lng]];
+        return updated.length > 250 ? updated.slice(updated.length - 250) : updated;
+      });
+
+      setTargetLocation(nextLocation);
     };
 
     socket.on('connect', onConnect);
@@ -78,11 +99,65 @@ export default function LiveMapScreen() {
     }
 
     return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('live-location-update', onLiveLocationUpdate);
     };
   }, []);
+
+  useEffect(() => {
+    displayLocationRef.current = displayLocation;
+  }, [displayLocation]);
+
+  useEffect(() => {
+    if (!targetLocation) {
+      return;
+    }
+
+    if (!displayLocationRef.current) {
+      setDisplayLocation(targetLocation);
+      return;
+    }
+
+    const from = { lat: displayLocationRef.current.lat, lng: displayLocationRef.current.lng };
+    const to = { lat: targetLocation.lat, lng: targetLocation.lng };
+    const durationMs = 2400;
+    let animationStart;
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    const animate = (timestamp) => {
+      if (!animationStart) {
+        animationStart = timestamp;
+      }
+
+      const elapsed = timestamp - animationStart;
+      const t = Math.min(1, elapsed / durationMs);
+      const eased = t < 0.5 ? 2 * t * t : 1 - (Math.pow(-2 * t + 2, 2) / 2);
+      const lat = from.lat + ((to.lat - from.lat) * eased);
+      const lng = from.lng + ((to.lng - from.lng) * eased);
+
+      setDisplayLocation({ lat, lng, timestamp: targetLocation.timestamp });
+
+      if (t < 1) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+        return;
+      }
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [targetLocation]);
 
   if (!mapLib) {
     return (
@@ -94,7 +169,21 @@ export default function LiveMapScreen() {
     );
   }
 
-  const { MapContainer, Marker, Popup, TileLayer } = mapLib;
+  const { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } = mapLib;
+
+  function RecenterOnLocation({ position }) {
+    const map = useMap();
+
+    useEffect(() => {
+      if (!position) {
+        return;
+      }
+
+      map.setView(position, map.getZoom(), { animate: true });
+    }, [map, position]);
+
+    return null;
+  }
 
   return (
     <div style={styles.container}>
@@ -103,8 +192,7 @@ export default function LiveMapScreen() {
 
       <div style={styles.mapWrap}>
         <MapContainer 
-          key={`${currentCenter[0]}-${currentCenter[1]}`}
-          center={currentCenter}
+          center={defaultCenter}
           zoom={14}
           style={styles.map}
         >
@@ -113,15 +201,24 @@ export default function LiveMapScreen() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {busLocation ? (
-            <Marker position={[busLocation.lat, busLocation.lng]}>
+          <RecenterOnLocation position={displayLocation ? [displayLocation.lat, displayLocation.lng] : null} />
+
+          {routePath.length > 1 ? (
+            <Polyline
+              positions={routePath}
+              pathOptions={{ color: '#2563eb', weight: 5, opacity: 0.9 }}
+            />
+          ) : null}
+
+          {displayLocation ? (
+            <Marker position={[displayLocation.lat, displayLocation.lng]} icon={busIcon || undefined}>
               <Popup>
                 <div>
                   <strong>Bus {childBusId}</strong>
                   <br />
-                  Lat: {busLocation.lat.toFixed(6)}
+                  Lat: {displayLocation.lat.toFixed(6)}
                   <br />
-                  Lng: {busLocation.lng.toFixed(6)}
+                  Lng: {displayLocation.lng.toFixed(6)}
                 </div>
               </Popup>
             </Marker>
@@ -130,11 +227,11 @@ export default function LiveMapScreen() {
       </div>
 
       <div style={styles.card}>
-        {busLocation ? (
+        {displayLocation ? (
           <>
-            <p style={styles.text}>Latitude: {busLocation.lat}</p>
-            <p style={styles.text}>Longitude: {busLocation.lng}</p>
-            <p style={styles.text}>Last Updated: {new Date(busLocation.timestamp).toLocaleTimeString()}</p>
+            <p style={styles.text}>Latitude: {displayLocation.lat}</p>
+            <p style={styles.text}>Longitude: {displayLocation.lng}</p>
+            <p style={styles.text}>Last Updated: {new Date(displayLocation.timestamp).toLocaleTimeString()}</p>
           </>
         ) : (
           <p style={styles.text}>Waiting for bus to start moving...</p>
